@@ -2,10 +2,11 @@ version = 0.1
 [default]
 [default.deploy]
 [default.deploy.parameters]
-stack_name = "play-store-event-emitter-sam"
-s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-1mn6rqwb47fbw"
-s3_prefix = "play-store-event-emitter-sam"
+stack_name = "com-acloudguru-play-store-event-emitter"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-13fmezeefy2ud"
+s3_prefix = "com-acloudguru-play-store-event-emitter"
 region = "us-east-1"
-confirm_changeset = false
+confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
+parameter_overrides = "PackageNameParameter=\"com.acloudguru\""
 

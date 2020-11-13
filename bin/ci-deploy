@@ -2,5 +2,4 @@
 set -euo pipefail
 
 yarn install
-yarn build
 yarn deploy

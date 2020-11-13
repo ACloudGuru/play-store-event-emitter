@@ -10,7 +10,7 @@ RUN apt-get update && \
         postgresql-client \
         python3-pip \
         -y && \
-    pip3 --no-cache-dir install --upgrade awscli
+    pip3 --no-cache-dir install --upgrade awscli aws-sam-cli
 
 # Install app dependencies
 # A wildcard is used to ensure both package.json AND package-lock.json are copied

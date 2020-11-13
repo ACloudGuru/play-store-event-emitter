@@ -1,0 +1,13 @@
+steps:
+  - label: "Production"
+    trigger: "play-store-event-emitter-deploy"
+    build:
+      commit: "$BUILDKITE_COMMIT"
+      message: "$BUILDKITE_MESSAGE"
+      branch: "$BUILDKITE_BRANCH"
+      env:
+        AWS_REGION: "us-east-1"
+        AWS_DEFAULT_REGION: "us-east-1"
+        AWS_ACCOUNT_ID: "585442104281"
+        ROLE_ARN: arn:aws:iam::585442104281:role/acloudguru-engineering-statistics-production-buildkite
+        STAGE: "prod"

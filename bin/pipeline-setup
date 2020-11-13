@@ -1,0 +1,132 @@
+#!/bin/bash
+set -euo pipefail
+
+SERVICE="play-store-event-emitter"
+REPO=""
+BUILDKITE_TOKEN=""
+ACTION=""
+
+usage="USAGE: $(basename "$0")
+where:
+    -a | --ACTION       'create' or 'update' (required)
+    -t | --token        buildkite token (required) 
+    -r | --REPO         git repository (required) eg. git@github.com:ACloudGuru/play-store-event-emitter.git
+    -h | --help         show this help text"
+
+while [ $# -gt 0 ]; do
+    if [[ $1 =~ "--"* ]]; then
+        case $1 in
+            --help|-h) echo "$usage"; exit; ;;
+            --REPO|-r) REPO=$2;;
+            --token|-t) BUILDKITE_TOKEN=$2;;
+            --action|-a) ACTION=$2;;
+        esac
+    fi
+    shift
+done
+
+function merge_pipeline() {
+  local pipeline="$SERVICE-merge"
+  local command="buildkite-agent pipeline upload ./.buildkite/merge.yml"
+  local method=$([ "$ACTION" == "create" ] && echo "POST" || echo "PATCH")
+  local urlPrefix=$([ "$ACTION" == "create" ] && echo "pipelines" || echo "pipelines/${pipeline}")
+
+  echo "Merge pipeline: $pipeline ..."
+
+  curl -X "$method" "https://api.buildkite.com/v2/organizations/a-cloud-guru/$urlPrefix" \
+  -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+  -d '{
+    "name": "'"$pipeline"'",
+    "repository": "'"$REPO"'",
+    "steps": [
+      {
+        "type": "script",
+        "name": ":buildkite:",
+        "command": "'"$command"'"
+      }
+    ],
+    "default_branch": "master",
+    "branch_configuration": "master",
+    "provider_settings": {
+      "trigger_mode": "code",
+      "build_pull_requests": false,
+      "publish_commit_status": true,
+      "publish_commit_status_per_step": true
+    }
+  }' | jq
+}
+
+function deploy_pipeline() {
+  local pipeline="$SERVICE-deploy"
+  local command="buildkite-agent pipeline upload ./.buildkite/deploy.yml"
+  local method=$([ "$ACTION" == "create" ] && echo "POST" || echo "PATCH")
+  local urlPrefix=$([ "$ACTION" == "create" ] && echo "pipelines" || echo "pipelines/${pipeline}")
+
+  echo "Meploy pipeline: $pipeline ..."
+
+  curl -X "$method" "https://api.buildkite.com/v2/organizations/a-cloud-guru/$urlPrefix" \
+  -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+  -d '{
+    "name": "'"$pipeline"'",
+    "repository": "'"$REPO"'",
+    "steps": [
+      {
+        "type": "script",
+        "name": ":buildkite:",
+        "command": "'"$command"'"
+      }
+    ],
+    "default_branch": "master",
+    "provider_settings": {
+      "trigger_mode": "none"
+    }
+  }' | jq
+}
+
+function pr_pipeline() {
+  local pipeline="$SERVICE-pull-request"
+  local command="buildkite-agent pipeline upload ./.buildkite/pull-request.yml"
+  local method=$([ "$ACTION" == "create" ] && echo "POST" || echo "PATCH")
+  local urlPrefix=$([ "$ACTION" == "create" ] && echo "pipelines" || echo "pipelines/${pipeline}")
+
+  echo "Pipeline: $pipeline ..."
+
+  curl -X "$method" "https://api.buildkite.com/v2/organizations/a-cloud-guru/$urlPrefix" \
+  -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+  -d '{
+    "name": "'"$pipeline"'",
+    "repository": "'"$REPO"'",
+    "steps": [
+      {
+        "type": "script",
+        "name": ":buildkite:",
+        "command": "'"$command"'"
+      }
+    ],
+    "default_branch": "",
+    "cancel_running_branch_builds": true,
+    "branch_configuration": "!master",
+    "provider_settings": {
+      "trigger_mode": "code",
+      "pull_request_branch_filter_enabled": true,
+      "pull_request_branch_filter_configuration": "!master",
+      "publish_blocked_as_pending": true,
+      "separate_pull_request_statuses": true,
+      "publish_commit_status": true,
+      "publish_commit_status_per_step": true
+    }
+  }' | jq
+}
+
+echo "🔧 Starting pipeline action"
+merge_pipeline
+deploy_pipeline
+pr_pipeline
+
+echo "🎉 Done action"
+
+if [[ $ACTION == "create" ]]; then
+    echo "Next steps - Integrate the Web Hook into the Merge and PR pipelines"
+    echo "- https://buildkite.com/a-cloud-guru/play-store-event-emitter-merge/settings/setup/github"
+    echo "- https://buildkite.com/a-cloud-guru/play-store-event-emitter-pull-request/settings/setup/github"
+fi
